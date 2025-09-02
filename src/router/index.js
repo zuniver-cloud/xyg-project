@@ -80,7 +80,22 @@ const routes = [
         path: 'data-standards',
         name: 'DataStandards',
         component: () => import('../views/DataStandards.vue'),
-        meta: { title: '数据标准推荐', icon: 'DataAnalysis', roles: ['admin', 'user'] }
+        meta: { title: '数据标准生成功能', icon: 'DataAnalysis', roles: ['admin', 'user'] },
+        redirect: 'generator',
+        children: [
+          {
+            path: 'generator',
+            name: 'DataGenerator',
+            component: () => import('../views/DataGenerator.vue'),
+            meta: { title: '数据标准生成', icon: 'DataAnalysis', roles: ['admin', 'user'] }
+          },
+          {
+            path: 'manage',
+            name: 'DataManage',
+            component: () => import('../views/DataManage.vue'),
+            meta: { title: '数据标准仓库', icon: 'Setting', roles: ['admin', 'user'] }
+          }
+        ]
       }
     ]
   }
