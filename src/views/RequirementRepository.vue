@@ -54,8 +54,7 @@
               </el-tooltip>
             </template>
           </el-table-column>
-          <el-table-column prop="publisher" label="创建者" width="120" />
-          <el-table-column prop="published_at" label="创建时间" width="180" />
+
           <el-table-column prop="last_modified" label="修改时间" width="180" />
           <el-table-column label="状态" width="100">
             <template #default="{ row }">
@@ -180,10 +179,6 @@
           </div>
         </div>
         <div class="detail-meta">
-          <p><strong>创建者：</strong>{{ selectedRequirement?.publisher }}</p>
-          <p>
-            <strong>创建时间：</strong>{{ selectedRequirement?.published_at }}
-          </p>
           <p>
             <strong>修改时间：</strong>{{ selectedRequirement?.last_modified }}
           </p>
@@ -292,8 +287,6 @@ export default {
           context: "实现用户登录认证功能",
           content:
             "需要实现用户{用户名}的登录功能，包括{密码验证}和{登录状态管理}。",
-          publisher: "user",
-          published_at: "2025-01-15 10:30:00",
           last_modified: "2025-01-15 10:30:00",
           status: "active",
         },
@@ -302,8 +295,6 @@ export default {
           template_name: "数据库表设计需求",
           context: "设计用户管理相关数据表",
           content: "需要设计{表名}表，包含字段{字段集合}，主要用于{表用途}。",
-          publisher: "user",
-          published_at: "2025-01-16 14:20:00",
           last_modified: "2025-01-16 14:20:00",
           status: "active",
         },
@@ -433,8 +424,6 @@ export default {
             const newRequirement = {
               ...formData,
               template_id: Date.now(),
-              publisher: "user",
-              published_at: new Date().toLocaleString(),
               last_modified: new Date().toLocaleString(),
             };
             requirements.value.unshift(newRequirement);
