@@ -75,7 +75,11 @@
                 >
                   {{ row.status === "active" ? "禁用" : "激活" }}
                 </el-button>
-                <el-button size="small" type="danger" @click="deleteUser(row)">
+                <el-button
+                  size="small"
+                  type="danger"
+                  @click="deleteUserHandler(row)"
+                >
                   删除
                 </el-button>
               </div>
@@ -163,6 +167,7 @@
 import { createApp, ref, reactive, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Search, Plus } from "@element-plus/icons-vue";
+import { getUserList, addUser, deleteUser, updateUser } from "@/api/user";
 
 export default {
   name: "UserManagement",
@@ -255,93 +260,108 @@ export default {
       { label: "禁用", value: "inactive" },
     ];
 
-    // 模拟数据
-    const mockUsers = [
-      {
-        id: 1,
-        use_id: "admin_001",
-        username: "admin",
-        password: "admin123",
-        role: "admin",
-        status: "active",
-      },
-      {
-        id: 2,
-        use_id: "editor_001",
-        username: "editor1",
-        password: "editor123",
-        role: "editor",
-        status: "active",
-      },
-      {
-        id: 3,
-        use_id: "user_001",
-        username: "user1",
-        password: "user123",
-        role: "user",
-        status: "inactive",
-      },
-      {
-        id: 4,
-        use_id: "user_002",
-        username: "user2",
-        password: "user123",
-        role: "user",
-        status: "active",
-      },
-      {
-        id: 5,
-        use_id: "editor_002",
-        username: "editor2",
-        password: "editor123",
-        role: "editor",
-        status: "inactive",
-      },
-    ];
+    // 模拟数据 - 已注释，使用API获取数据
+    // const mockUsers = [
+    //   {
+    //     id: 1,
+    //     use_id: "admin_001",
+    //     username: "admin",
+    //     password: "admin123",
+    //     role: "admin",
+    //     status: "active",
+    //   },
+    //   {
+    //     id: 2,
+    //     use_id: "editor_001",
+    //     username: "editor1",
+    //     password: "editor123",
+    //     role: "editor",
+    //     status: "active",
+    //   },
+    //   {
+    //     id: 3,
+    //     use_id: "user_001",
+    //     username: "user1",
+    //     password: "user123",
+    //     role: "user",
+    //     status: "inactive",
+    //   },
+    //   {
+    //     id: 4,
+    //     use_id: "user_002",
+    //     username: "user2",
+    //     password: "user123",
+    //     role: "user",
+    //     status: "active",
+    //   },
+    //   {
+    //     id: 5,
+    //     use_id: "editor_002",
+    //     username: "editor2",
+    //     password: "editor123",
+    //     role: "editor",
+    //     status: "inactive",
+    //   },
+    // ];
+
+    // 获取用户列表
+    const fetchUsers = async () => {
+      try {
+        loading.value = true;
+        const response = await getUserList({
+          role: null, // 获取所有角色
+          keyword: searchKeyword.value,
+          pageNum: pagination.currentPage,
+          pageSize: pagination.pageSize,
+        });
+
+        if (response.code === 0 || response.code === "0") {
+          // 转换API数据格式为组件需要的格式
+          users.value = response.data.records.map((item) => ({
+            id: item.userId,
+            use_id: item.userId,
+            username: item.username,
+            password: "", // 密码不在列表中显示
+            role: item.role === 1 ? "admin" : "user",
+            status: item.status === 1 ? "active" : "inactive",
+            createAt: item.createAt,
+            updateAt: item.updateAt,
+          }));
+          filteredUsers.value = users.value;
+          pagination.total = response.data.total;
+        } else {
+          ElMessage.error(response.msg || "获取用户列表失败");
+        }
+      } catch (error) {
+        console.error("获取用户列表失败:", error);
+        ElMessage.error("获取用户列表失败");
+      } finally {
+        loading.value = false;
+      }
+    };
 
     // 初始化数据
     const initData = () => {
-      loading.value = true;
-      // 模拟API请求延迟
-      setTimeout(() => {
-        users.value = mockUsers;
-        filteredUsers.value = mockUsers;
-        pagination.total = mockUsers.length;
-        loading.value = false;
-      }, 500);
+      fetchUsers();
     };
 
     // 搜索用户
     const searchUsers = () => {
-      loading.value = true;
-      // 模拟搜索
-      setTimeout(() => {
-        if (!searchKeyword.value) {
-          filteredUsers.value = users.value;
-        } else {
-          const keyword = searchKeyword.value.toLowerCase();
-          filteredUsers.value = users.value.filter(
-            (user) =>
-              user.use_id.toLowerCase().includes(keyword) ||
-              user.username.toLowerCase().includes(keyword) ||
-              user.role.toLowerCase().includes(keyword)
-          );
-        }
-        pagination.total = filteredUsers.value.length;
-        pagination.currentPage = 1;
-        loading.value = false;
-      }, 300);
+      pagination.currentPage = 1;
+      fetchUsers();
     };
 
     // 处理分页变化
     const handleCurrentChange = (currentPage) => {
       pagination.currentPage = currentPage;
+      fetchUsers();
     };
 
     // 处理每页数量变化
     const handleSizeChange = (pageSize) => {
       pagination.pageSize = pageSize;
       pagination.currentPage = 1;
+      fetchUsers();
     };
 
     // 打开添加用户对话框
@@ -375,74 +395,70 @@ export default {
     };
 
     // 提交表单
-    const submitForm = () => {
-      formRef.value.validate((valid) => {
-        if (valid) {
-          if (formData.id) {
-            // 编辑用户
-            const index = users.value.findIndex(
-              (user) => user.id === formData.id
-            );
-            if (index !== -1) {
-              const updatedUser = {
-                ...users.value[index],
-                use_id: formData.use_id,
-                username: formData.username,
-                role: formData.role,
-                status: formData.status,
-              };
+    const submitForm = async () => {
+      try {
+        await formRef.value.validate();
 
-              // 只有在密码不为空时才更新密码
-              if (formData.password) {
-                updatedUser.password = formData.password;
-              }
+        const requestData = {
+          userId: formData.use_id,
+          username: formData.username,
+          password: formData.password,
+          role: formData.role === "admin" ? 1 : 0,
+          status: formData.status === "active" ? 1 : 0,
+        };
 
-              users.value[index] = updatedUser;
-              filteredUsers.value = [...users.value];
-              ElMessage.success("用户信息更新成功");
-            }
+        if (formData.id) {
+          // 编辑用户
+          const response = await updateUser(requestData);
+          if (response.code === 0 || response.code === "0") {
+            ElMessage.success("用户信息更新成功");
+            await fetchUsers(); // 重新获取用户列表
           } else {
-            // 添加用户
-            const newUser = {
-              ...formData,
-              id: Math.max(...users.value.map((user) => user.id)) + 1,
-            };
-            users.value.unshift(newUser);
-            filteredUsers.value = [...users.value];
-            pagination.total = users.value.length;
-            ElMessage.success("用户添加成功");
+            ElMessage.error(response.msg || "更新用户失败");
           }
-          dialogVisible.value = false;
         } else {
-          ElMessage.error("请正确填写表单");
-          return false;
+          // 添加用户
+          const response = await addUser(requestData);
+          if (response.code === 0 || response.code === "0") {
+            ElMessage.success("用户添加成功");
+            await fetchUsers(); // 重新获取用户列表
+          } else {
+            ElMessage.error(response.msg || "添加用户失败");
+          }
         }
-      });
+        dialogVisible.value = false;
+      } catch (error) {
+        console.error("提交表单失败:", error);
+        ElMessage.error("操作失败");
+      }
     };
 
     // 删除用户
-    const deleteUser = (user) => {
-      ElMessageBox.confirm(
-        `确定要删除用户 "${user.username}" 吗？此操作不可恢复。`,
-        "警告",
-        {
-          confirmButtonText: "确定",
-          cancelButtonText: "取消",
-          type: "warning",
-        }
-      )
-        .then(() => {
-          const index = users.value.findIndex((u) => u.id === user.id);
-          if (index !== -1) {
-            users.value.splice(index, 1);
-            filteredUsers.value = [...users.value];
-            pagination.total = users.value.length;
-            ElMessage.success("用户删除成功");
+    const deleteUserHandler = async (user) => {
+      try {
+        await ElMessageBox.confirm(
+          `确定要删除用户 "${user.username}" 吗？此操作不可恢复。`,
+          "警告",
+          {
+            confirmButtonText: "确定",
+            cancelButtonText: "取消",
+            type: "warning",
           }
-        })
-        .catch(() => {
-          // 用户取消删除
-        });
+        );
+
+        const response = await deleteUser(user.use_id);
+        if (response.code === 0 || response.code === "0") {
+          ElMessage.success("用户删除成功");
+          await fetchUsers(); // 重新获取用户列表
+        } else {
+          ElMessage.error(response.msg || "删除用户失败");
+        }
+      } catch (error) {
+        if (error !== "cancel") {
+          console.error("删除用户失败:", error);
+          ElMessage.error("删除用户失败");
+        }
+      }
     };
 
     // 切换用户状态
@@ -505,7 +521,7 @@ export default {
       openAddDialog,
       openEditDialog,
       submitForm,
-      deleteUser,
+      deleteUser: deleteUserHandler,
       toggleStatus,
       formatRole,
     };

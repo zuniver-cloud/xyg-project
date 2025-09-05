@@ -24,39 +24,12 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="标准类型" prop="type">
-              <el-select
-                v-model="editingStandard.type"
-                placeholder="请选择标准类型"
-                style="width: 100%"
-              >
-                <el-option label="基础标准" value="basic" />
-                <el-option label="高级标准" value="advanced" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="关联需求" prop="requirement">
+            <el-form-item label="标准描述" prop="description">
               <el-input
-                v-model="editingStandard.requirement"
-                placeholder="请输入关联需求"
+                v-model="editingStandard.description"
+                placeholder="请输入标准描述"
                 clearable
               />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="状态" prop="status">
-              <el-select
-                v-model="editingStandard.status"
-                placeholder="请选择状态"
-                style="width: 100%"
-              >
-                <el-option label="已启用" value="active" />
-                <el-option label="已停用" value="inactive" />
-              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -74,33 +47,11 @@
 
         <el-divider content-position="left">其他信息</el-divider>
 
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="创建时间" prop="createTime">
-              <el-input
-                v-model="editingStandard.createTime"
-                placeholder="创建时间"
-                readonly
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="最后修改" prop="updateTime">
-              <el-input
-                v-model="editingStandard.updateTime"
-                placeholder="最后修改时间"
-                readonly
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-form-item label="备注" prop="remark">
+        <el-form-item label="更新时间" prop="updateAt">
           <el-input
-            v-model="editingStandard.remark"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入备注信息..."
+            v-model="editingStandard.updateAt"
+            placeholder="更新时间"
+            readonly
           />
         </el-form-item>
       </el-form>
@@ -120,6 +71,7 @@
 <script setup>
 import { ref, reactive, watch, computed } from "vue";
 import { ElMessage } from "element-plus";
+import { updateStandard } from "@/api/standard";
 
 // 定义props和emits
 const props = defineProps({
@@ -152,9 +104,7 @@ const formRules = {
     { required: true, message: "请输入标准名称", trigger: "blur" },
     { min: 2, max: 50, message: "长度在 2 到 50 个字符", trigger: "blur" },
   ],
-  type: [{ required: true, message: "请选择标准类型", trigger: "change" }],
-  requirement: [{ required: true, message: "请输入关联需求", trigger: "blur" }],
-  status: [{ required: true, message: "请选择状态", trigger: "change" }],
+  description: [{ required: true, message: "请输入标准描述", trigger: "blur" }],
   content: [{ required: true, message: "请输入标准内容", trigger: "blur" }],
 };
 
@@ -165,19 +115,15 @@ watch(
     if (newData && Object.keys(newData).length > 0) {
       editingStandard.value = {
         ...newData,
-        updateTime: new Date().toLocaleString(),
+        updateAt: new Date().toLocaleString(),
       };
     } else {
       // 创建新的标准
       editingStandard.value = {
         name: "",
-        type: "basic",
-        requirement: "",
-        status: "active",
+        description: "",
         content: "",
-        createTime: new Date().toLocaleString(),
-        updateTime: new Date().toLocaleString(),
-        remark: "",
+        updateAt: new Date().toLocaleString(),
       };
     }
   },
@@ -201,19 +147,28 @@ const handleSave = async () => {
     await formRef.value.validate();
     saving.value = true;
 
-    // 模拟API调用
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // 调用真实API保存数据标准
+    const response = await updateStandard({
+      standardId: editingStandard.value.id,
+      standardName: editingStandard.value.name,
+      description: editingStandard.value.description || "",
+      standardJson: editingStandard.value.content,
+    });
 
-    // 更新修改时间
-    editingStandard.value.updateTime = new Date().toLocaleString();
+    if (response.code === 0 || response.code === "0") {
+      // 更新修改时间
+      editingStandard.value.updateAt = new Date().toLocaleString();
 
-    // 发送成功事件
-    emit("success", { ...editingStandard.value });
+      // 发送成功事件
+      emit("success", { ...editingStandard.value });
 
-    // 关闭对话框
-    dialogVisible.value = false;
+      // 关闭对话框
+      dialogVisible.value = false;
 
-    ElMessage.success("数据标准保存成功");
+      ElMessage.success("数据标准保存成功");
+    } else {
+      ElMessage.error(response.msg || "保存失败");
+    }
   } catch (error) {
     console.error("Save standard error:", error);
     if (error !== "cancel") {

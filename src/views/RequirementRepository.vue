@@ -33,7 +33,7 @@
       <!-- 表格 -->
       <div class="table-container">
         <el-table
-          :data="filteredRequirements"
+          :data="requirements"
           v-loading="loading"
           border
           stripe
@@ -54,18 +54,21 @@
               </el-tooltip>
             </template>
           </el-table-column>
-
-          <el-table-column prop="last_modified" label="修改时间" width="180" />
-          <el-table-column label="状态" width="100">
+          <el-table-column prop="content" label="需求内容" min-width="250">
             <template #default="{ row }">
-              <el-tag
-                :type="row.status === 'active' ? 'success' : 'info'"
-                size="small"
+              <el-tooltip
+                :content="row.content || '暂无内容'"
+                placement="top"
+                :show-after="500"
               >
-                {{ row.status === "active" ? "有效" : "已归档" }}
-              </el-tag>
+                <span class="content-text">
+                  {{ row.content || "暂无内容" }}
+                </span>
+              </el-tooltip>
             </template>
           </el-table-column>
+
+          <el-table-column prop="last_modified" label="修改时间" width="180" />
           <!-- 操作栏 -->
           <el-table-column label="操作" width="320" fixed="right">
             <template #default="{ row }">
@@ -141,17 +144,6 @@
             placeholder="请输入需求内容，使用{变量名}格式定义变量"
           />
         </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="formData.status">
-            <el-radio
-              v-for="item in statusOptions"
-              :key="item.value"
-              :label="item.value"
-            >
-              {{ item.label }}
-            </el-radio>
-          </el-radio-group>
-        </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -218,11 +210,17 @@ import {
   Download,
   Delete,
 } from "@element-plus/icons-vue";
+import {
+  getMyRequirements,
+  saveRequirement,
+  deleteRequirement as deleteRequirementApi,
+  updateRequirement,
+} from "@/api/requirement";
 
 export default {
   name: "RequirementRepository",
   setup() {
-    // 需求数据
+    // 需求数据 - 从API获取
     const requirements = ref([]);
     // 过滤后的需求数据
     const filteredRequirements = ref([]);
@@ -249,7 +247,6 @@ export default {
       template_name: "",
       context: "",
       content: "",
-      status: "active",
     });
     // 表单引用
     const formRef = ref(null);
@@ -268,13 +265,8 @@ export default {
       content: [{ required: true, message: "请输入需求内容", trigger: "blur" }],
     };
 
-    // 状态选项
-    const statusOptions = [
-      { label: "有效", value: "active" },
-      { label: "已归档", value: "archived" },
-    ];
-
-    // 模拟数据 - 从localStorage获取或使用默认数据
+    // 模拟数据 - 前后端联测时注释掉
+    /*
     const getMockRequirements = () => {
       const savedRequirements = localStorage.getItem("myRequirements");
       if (savedRequirements) {
@@ -288,7 +280,6 @@ export default {
           content:
             "需要实现用户{用户名}的登录功能，包括{密码验证}和{登录状态管理}。",
           last_modified: "2025-01-15 10:30:00",
-          status: "active",
         },
         {
           template_id: 1002,
@@ -296,15 +287,63 @@ export default {
           context: "设计用户管理相关数据表",
           content: "需要设计{表名}表，包含字段{字段集合}，主要用于{表用途}。",
           last_modified: "2025-01-16 14:20:00",
-          status: "active",
         },
       ];
     };
+    */
 
-    // 保存数据到localStorage
+    // 获取需求列表
+    const fetchRequirements = async () => {
+      try {
+        loading.value = true;
+        const response = await getMyRequirements({
+          pageNum: pagination.currentPage,
+          pageSize: pagination.pageSize,
+          keyword: searchKeyword.value,
+          startTime: "",
+          endTime: "",
+        });
+
+        if (response.code === 0 || response.code === "0") {
+          // 转换API数据格式为组件需要的格式
+          requirements.value = response.data.records.map((item) => {
+            let content = "";
+            try {
+              if (item.jsonText) {
+                const jsonData = JSON.parse(item.jsonText);
+                content = jsonData.raw_text || "";
+              }
+            } catch (error) {
+              console.error("解析jsonText失败:", error);
+              content = item.jsonText || "";
+            }
+
+            return {
+              template_id: item.requirementId,
+              template_name: item.requirementName,
+              context: item.context,
+              content: content,
+              last_modified: item.updateAt,
+            };
+          });
+          pagination.total = response.data.total;
+        } else {
+          ElMessage.error(response.msg || "获取需求列表失败");
+        }
+      } catch (error) {
+        console.error("获取需求列表失败:", error);
+        ElMessage.error("获取需求列表失败");
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    // 保存数据到localStorage - 前后端联测时注释掉
+    /*
     const saveRequirements = (data) => {
       localStorage.setItem("myRequirements", JSON.stringify(data));
     };
+    */
 
     // 格式化内容显示
     const formattedContent = computed(() => {
@@ -317,48 +356,27 @@ export default {
     });
 
     // 初始化数据
-    const initData = () => {
-      loading.value = true;
-      // 模拟API请求延迟
-      setTimeout(() => {
-        requirements.value = getMockRequirements();
-        filteredRequirements.value = requirements.value;
-        pagination.total = requirements.value.length;
-        loading.value = false;
-      }, 500);
+    const initData = async () => {
+      await fetchRequirements();
     };
 
     // 搜索需求
-    const searchRequirements = () => {
-      loading.value = true;
-      // 模拟搜索
-      setTimeout(() => {
-        if (!searchKeyword.value) {
-          filteredRequirements.value = requirements.value;
-        } else {
-          const keyword = searchKeyword.value.toLowerCase();
-          filteredRequirements.value = requirements.value.filter(
-            (req) =>
-              req.template_name.toLowerCase().includes(keyword) ||
-              req.context.toLowerCase().includes(keyword) ||
-              req.content.toLowerCase().includes(keyword)
-          );
-        }
-        pagination.total = filteredRequirements.value.length;
-        pagination.currentPage = 1;
-        loading.value = false;
-      }, 300);
+    const searchRequirements = async () => {
+      pagination.currentPage = 1;
+      await fetchRequirements();
     };
 
     // 处理分页变化
-    const handleCurrentChange = (currentPage) => {
+    const handleCurrentChange = async (currentPage) => {
       pagination.currentPage = currentPage;
+      await fetchRequirements();
     };
 
     // 处理每页数量变化
-    const handleSizeChange = (pageSize) => {
+    const handleSizeChange = async (pageSize) => {
       pagination.pageSize = pageSize;
       pagination.currentPage = 1;
+      await fetchRequirements();
     };
 
     // 打开新增需求对话框
@@ -370,7 +388,6 @@ export default {
         template_name: "",
         context: "",
         content: "",
-        status: "active",
       });
       dialogVisible.value = true;
     };
@@ -390,54 +407,52 @@ export default {
         template_name: requirement.template_name,
         context: requirement.context,
         content: requirement.content,
-        status: requirement.status,
       });
       dialogVisible.value = true;
     };
 
     // 提交表单
-    const submitForm = () => {
-      formRef.value.validate((valid) => {
-        if (valid) {
-          if (formData.template_id) {
-            // 编辑需求
-            const index = requirements.value.findIndex(
-              (req) => req.template_id === formData.template_id
-            );
-            if (index !== -1) {
-              const updatedRequirement = {
-                ...requirements.value[index],
-                template_name: formData.template_name,
-                context: formData.context,
-                content: formData.content,
-                status: formData.status,
-                last_modified: new Date().toLocaleString(),
-              };
+    const submitForm = async () => {
+      try {
+        await formRef.value.validate();
 
-              requirements.value[index] = updatedRequirement;
-              filteredRequirements.value = [...requirements.value];
-              saveRequirements(requirements.value);
-              ElMessage.success("需求更新成功");
-            }
+        const requestData = {
+          requirementName: formData.template_name,
+          context: formData.context,
+          jsonText: JSON.stringify({
+            raw_text: formData.content,
+            variables: [],
+          }),
+        };
+
+        if (formData.template_id) {
+          // 编辑需求
+          requestData.requirementId = formData.template_id;
+          const response = await updateRequirement(requestData);
+
+          if (response.code === "0" || response.code === 0) {
+            ElMessage.success("需求更新成功");
+            await fetchRequirements(); // 重新获取数据
           } else {
-            // 新增需求
-            const newRequirement = {
-              ...formData,
-              template_id: Date.now(),
-              last_modified: new Date().toLocaleString(),
-            };
-            requirements.value.unshift(newRequirement);
-            filteredRequirements.value = [...requirements.value];
-            pagination.total = requirements.value.length;
-            saveRequirements(requirements.value);
-            ElMessage.success("需求添加成功");
+            ElMessage.error(response.msg || "需求更新失败");
           }
-          dialogVisible.value = false;
         } else {
-          ElMessage.error("请正确填写表单");
-          return false;
+          // 新增需求
+          const response = await saveRequirement(requestData);
+
+          if (response.code === "0" || response.code === 0) {
+            ElMessage.success("需求添加成功");
+            await fetchRequirements(); // 重新获取数据
+          } else {
+            ElMessage.error(response.msg || "需求添加失败");
+          }
         }
-      });
+
+        dialogVisible.value = false;
+      } catch (error) {
+        console.error("提交表单失败:", error);
+        ElMessage.error("请正确填写表单");
+      }
     };
 
     // 下载需求
@@ -466,16 +481,21 @@ export default {
           type: "warning",
         }
       )
-        .then(() => {
-          const index = requirements.value.findIndex(
-            (req) => req.template_id === requirement.template_id
-          );
-          if (index !== -1) {
-            requirements.value.splice(index, 1);
-            filteredRequirements.value = [...requirements.value];
-            pagination.total = requirements.value.length;
-            saveRequirements(requirements.value);
-            ElMessage.success("需求删除成功");
+        .then(async () => {
+          try {
+            const response = await deleteRequirementApi(
+              requirement.template_id
+            );
+
+            if (response.code === "0" || response.code === 0) {
+              ElMessage.success("需求删除成功");
+              await fetchRequirements(); // 重新获取数据
+            } else {
+              ElMessage.error(response.msg || "需求删除失败");
+            }
+          } catch (error) {
+            console.error("删除需求失败:", error);
+            ElMessage.error("需求删除失败");
           }
         })
         .catch(() => {
@@ -483,45 +503,13 @@ export default {
         });
     };
 
-    // 切换需求状态
-    const toggleStatus = (requirement) => {
-      const newStatus = requirement.status === "active" ? "archived" : "active";
-      const action = newStatus === "active" ? "激活" : "归档";
-
-      ElMessageBox.confirm(
-        `确定要${action}需求 "${requirement.template_name}" 吗？`,
-        "提示",
-        {
-          confirmButtonText: "确定",
-          cancelButtonText: "取消",
-          type: "info",
-        }
-      )
-        .then(() => {
-          const index = requirements.value.findIndex(
-            (req) => req.template_id === requirement.template_id
-          );
-          if (index !== -1) {
-            requirements.value[index].status = newStatus;
-            requirements.value[index].last_modified =
-              new Date().toLocaleString();
-            filteredRequirements.value = [...requirements.value];
-            saveRequirements(requirements.value);
-            ElMessage.success(`需求已${action}`);
-          }
-        })
-        .catch(() => {
-          // 用户取消操作
-        });
-    };
-
     // 组件挂载时初始化数据
-    onMounted(() => {
-      initData();
+    onMounted(async () => {
+      await initData();
     });
 
     return {
-      filteredRequirements,
+      requirements,
       loading,
       searchKeyword,
       pagination,
@@ -532,7 +520,6 @@ export default {
       formData,
       formRef,
       formRules,
-      statusOptions,
       formattedContent,
       searchRequirements,
       handleCurrentChange,
@@ -541,10 +528,8 @@ export default {
       viewRequirement,
       editRequirement,
       submitForm,
-
       downloadRequirement,
       deleteRequirement,
-      toggleStatus,
     };
   },
 };
@@ -607,6 +592,14 @@ export default {
 .description-text {
   display: inline-block;
   max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.content-text {
+  display: inline-block;
+  max-width: 250px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

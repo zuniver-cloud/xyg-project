@@ -31,34 +31,11 @@
           <el-descriptions-item label="标准名称">
             {{ currentStandard.name }}
           </el-descriptions-item>
-          <el-descriptions-item label="标准类型">
-            <el-tag
-              :type="currentStandard.type === 'basic' ? 'primary' : 'success'"
-            >
-              {{ currentStandard.type === "basic" ? "基础标准" : "高级标准" }}
-            </el-tag>
+          <el-descriptions-item label="标准描述">
+            {{ currentStandard.description || "暂无描述" }}
           </el-descriptions-item>
-          <el-descriptions-item label="关联需求">
-            {{ currentStandard.requirement }}
-          </el-descriptions-item>
-          <el-descriptions-item label="创建时间">
-            {{ currentStandard.createTime }}
-          </el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag
-              :type="currentStandard.status === 'active' ? 'success' : 'info'"
-            >
-              {{ currentStandard.status === "active" ? "已启用" : "已停用" }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item
-            label="最后修改"
-            v-if="currentStandard.updateTime"
-          >
-            {{ currentStandard.updateTime }}
-          </el-descriptions-item>
-          <el-descriptions-item label="备注" v-if="currentStandard.remark">
-            {{ currentStandard.remark }}
+          <el-descriptions-item label="更新时间">
+            {{ currentStandard.updateAt }}
           </el-descriptions-item>
         </el-descriptions>
 

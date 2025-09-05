@@ -1,49 +1,21 @@
-import request from '../utils/request'
+import request from '@/utils/request'
 
-// 用户管理相关API接口
-// 具体实现将由其他开发者完成
-
-// 用户注册
-export const register = (data) => {
-  // 实现将由其他开发者完成
-}
-
-// 用户登录
-export const login = (data) => {
-  // 实现将由其他开发者完成
-}
-
-// 用户登出
-export const logout = () => {
-  // 实现将由其他开发者完成
-}
-
-// 获取用户信息
-export const getUserInfo = () => {
-  // 实现将由其他开发者完成
-}
-
-// 获取用户列表
+// 分页查询用户
 export const getUserList = (params) => {
-  // 实现将由其他开发者完成
+  return request.post('/api/admin/userManagement/page', params)
 }
 
-// 创建用户
-export const createUser = (data) => {
-  // 实现将由其他开发者完成
-}
-
-// 更新用户
-export const updateUser = (id, data) => {
-  // 实现将由其他开发者完成
+// 新增用户
+export const addUser = (data) => {
+  return request.post('/api/admin/userManagement/addUser', data)
 }
 
 // 删除用户
-export const deleteUser = (id) => {
-  // 实现将由其他开发者完成
+export const deleteUser = (userId) => {
+  return request.delete(`/api/admin/userManagement/deleteUser/${userId}`)
 }
 
-// 获取用户详情
-export const getUserDetail = (id) => {
-  // 实现将由其他开发者完成
+// 更新用户
+export const updateUser = (data) => {
+  return request.put('/api/admin/updateUser', data)
 }

@@ -67,7 +67,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { ElMessage } from "element-plus";
 import { Search } from "@element-plus/icons-vue";
+import { getERModelList } from "@/api/er-model";
 
 // Props
 const props = defineProps({
@@ -83,6 +85,7 @@ const emit = defineEmits(["update:selected-model"]);
 // 响应式数据
 const searchKeyword = ref("");
 const erModels = ref([]);
+const loading = ref(false);
 
 // 计算属性
 const filteredModels = computed(() => {
@@ -101,7 +104,8 @@ const filteredModels = computed(() => {
 
 // 方法
 const handleSearch = () => {
-  // 搜索逻辑已通过计算属性实现
+  // 搜索时重新获取数据
+  fetchERModels();
 };
 
 const handleModelSelect = (model) => {
@@ -114,193 +118,93 @@ const formatTime = (timestamp) => {
   return date.toLocaleDateString("zh-CN");
 };
 
-// 模拟数据
-const loadMockData = () => {
-  erModels.value = [
-    {
-      id: 1,
-      erName: "学生管理系统ER模型",
-      description: "包含学生、课程、教师、班级等实体的ER模型",
-      entityCount: 5,
-      createTime: "2024-01-15T10:00:00Z",
-      erJson: JSON.stringify({
-        entities: [
-          {
-            name: "Student",
-            attributes: ["id", "name", "age", "class", "major", "email"],
-          },
-          {
-            name: "Course",
-            attributes: ["id", "title", "credits", "teacher", "semester"],
-          },
-          {
-            name: "Teacher",
-            attributes: ["id", "name", "department", "position", "email"],
-          },
-          {
-            name: "Class",
-            attributes: ["id", "name", "grade", "major", "student_count"],
-          },
-          {
-            name: "Grade",
-            attributes: ["id", "student_id", "course_id", "score", "semester"],
-          },
-        ],
-      }),
-    },
-    {
-      id: 2,
-      erName: "电商系统ER模型",
-      description: "包含用户、商品、订单、购物车等实体的ER模型",
-      entityCount: 8,
-      createTime: "2024-01-10T14:30:00Z",
-      erJson: JSON.stringify({
-        entities: [
-          {
-            name: "User",
-            attributes: [
-              "id",
-              "username",
-              "email",
-              "phone",
-              "address",
-              "create_time",
-            ],
-          },
-          {
-            name: "Product",
-            attributes: [
-              "id",
-              "name",
-              "price",
-              "stock",
-              "category",
-              "description",
-            ],
-          },
-          {
-            name: "Order",
-            attributes: [
-              "id",
-              "user_id",
-              "total_amount",
-              "status",
-              "create_time",
-            ],
-          },
-          {
-            name: "OrderItem",
-            attributes: ["id", "order_id", "product_id", "quantity", "price"],
-          },
-          {
-            name: "Cart",
-            attributes: ["id", "user_id", "product_id", "quantity", "add_time"],
-          },
-          {
-            name: "Category",
-            attributes: ["id", "name", "parent_id", "level", "sort_order"],
-          },
-          {
-            name: "Review",
-            attributes: [
-              "id",
-              "user_id",
-              "product_id",
-              "rating",
-              "comment",
-              "create_time",
-            ],
-          },
-          {
-            name: "Payment",
-            attributes: [
-              "id",
-              "order_id",
-              "amount",
-              "method",
-              "status",
-              "pay_time",
-            ],
-          },
-        ],
-      }),
-    },
-    {
-      id: 3,
-      erName: "人力资源系统ER模型",
-      description: "包含员工、部门、职位、薪资等实体的ER模型",
-      entityCount: 6,
-      createTime: "2024-01-05T09:15:00Z",
-      erJson: JSON.stringify({
-        entities: [
-          {
-            name: "Employee",
-            attributes: [
-              "id",
-              "name",
-              "email",
-              "phone",
-              "hire_date",
-              "department_id",
-              "position_id",
-            ],
-          },
-          {
-            name: "Department",
-            attributes: ["id", "name", "manager_id", "location", "description"],
-          },
-          {
-            name: "Position",
-            attributes: [
-              "id",
-              "title",
-              "level",
-              "salary_range",
-              "requirements",
-            ],
-          },
-          {
-            name: "Salary",
-            attributes: [
-              "id",
-              "employee_id",
-              "base_salary",
-              "bonus",
-              "deductions",
-              "month",
-            ],
-          },
-          {
-            name: "Attendance",
-            attributes: [
-              "id",
-              "employee_id",
-              "date",
-              "check_in",
-              "check_out",
-              "status",
-            ],
-          },
-          {
-            name: "Training",
-            attributes: [
-              "id",
-              "name",
-              "description",
-              "duration",
-              "cost",
-              "trainer",
-            ],
-          },
-        ],
-      }),
-    },
-  ];
+// 获取ER模型列表
+const fetchERModels = async () => {
+  try {
+    loading.value = true;
+    const response = await getERModelList({
+      startTime: "",
+      endTime: "",
+      erName: searchKeyword.value,
+      pageNum: 1,
+      pageSize: 100, // 获取更多数据
+    });
+
+    if (response.code === 0 || response.code === "0") {
+      // 转换API数据格式为组件需要的格式
+      erModels.value = response.data.records.map((item) => ({
+        id: item.erId,
+        erName: item.erName,
+        description: item.description,
+        updateAt: item.updateAt,
+        erJson: item.erJson,
+        // 计算实体数量
+        entityCount: calculateEntityCount(item.erJson),
+        // 使用updateAt作为createTime
+        createTime: item.updateAt,
+      }));
+    } else {
+      ElMessage.error(response.msg || "获取ER模型列表失败");
+    }
+  } catch (error) {
+    console.error("获取ER模型列表失败:", error);
+    ElMessage.error("获取ER模型列表失败");
+  } finally {
+    loading.value = false;
+  }
 };
+
+// 计算实体数量
+const calculateEntityCount = (erJson) => {
+  try {
+    const data = JSON.parse(erJson);
+    return data.entities ? data.entities.length : 0;
+  } catch {
+    return 0;
+  }
+};
+
+// 模拟数据 - 已注释，使用真实API获取数据
+// const loadMockData = () => {
+//   erModels.value = [
+//     {
+//       id: 1,
+//       erName: "学生管理系统ER模型",
+//       description: "包含学生、课程、教师、班级等实体的ER模型",
+//       entityCount: 5,
+//       createTime: "2024-01-15T10:00:00Z",
+//       erJson: JSON.stringify({
+//         entities: [
+//           {
+//             name: "Student",
+//             attributes: ["id", "name", "age", "class", "major", "email"],
+//           },
+//           {
+//             name: "Course",
+//             attributes: ["id", "title", "credits", "teacher", "semester"],
+//           },
+//           {
+//             name: "Teacher",
+//             attributes: ["id", "name", "department", "position", "email"],
+//           },
+//           {
+//             name: "Class",
+//             attributes: ["id", "name", "grade", "major", "student_count"],
+//           },
+//           {
+//             name: "Grade",
+//             attributes: ["id", "student_id", "course_id", "score", "semester"],
+//           },
+//         ],
+//       }),
+//     },
+//     // ... 其他模拟数据
+//   ];
+// };
 
 // 生命周期
 onMounted(() => {
-  loadMockData();
+  fetchERModels();
 });
 </script>
 

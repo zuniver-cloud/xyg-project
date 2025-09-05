@@ -1,11 +1,10 @@
 import request from '../utils/request'
 
 // ER模型相关API接口
-// 具体实现将由其他开发者完成
 
-// 获取ER模型列表
+// 查询ER模型列表
 export const getERModelList = (params) => {
-  // 实现将由其他开发者完成
+  return request.post('/api/er/query', params)
 }
 
 // 生成ER模型

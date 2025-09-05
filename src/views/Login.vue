@@ -16,10 +16,10 @@
         class="login-form"
         @keyup.enter="handleLogin"
       >
-        <el-form-item prop="username">
+        <el-form-item prop="userId">
           <el-input
-            v-model="loginForm.username"
-            placeholder="请输入用户名"
+            v-model="loginForm.userId"
+            placeholder="请输入用户ID"
             size="large"
             prefix-icon="User"
           />
@@ -45,8 +45,8 @@
           <el-alert title="测试账号" type="info" :closable="false" show-icon>
             <template #default>
               <div style="font-size: 12px; line-height: 1.5">
-                <div>管理员：admin / 123456</div>
-                <div>普通用户：user / 123456</div>
+                <div>管理员：001779999 / 11</div>
+                <div>普通用户：001779998 / 11</div>
               </div>
             </template>
           </el-alert>
@@ -63,14 +63,6 @@
             {{ loading ? "登录中..." : "登录" }}
           </el-button>
         </el-form-item>
-
-        <el-form-item>
-          <div class="register-link">
-            还没有账号？<el-link type="primary" @click="goToRegister"
-              >立即注册</el-link
-            >
-          </div>
-        </el-form-item>
       </el-form>
     </div>
   </div>
@@ -81,6 +73,7 @@ import { ref, reactive } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "../stores/user";
 import { ElMessage } from "element-plus";
+import { login as loginApi } from "@/api/auth";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -90,16 +83,16 @@ const loading = ref(false);
 const isDev = import.meta.env.DEV;
 
 const loginForm = reactive({
-  username: "",
+  userId: "",
   password: "",
   remember: false,
 });
 
 const loginRules = {
-  username: [{ required: true, message: "请输入用户名", trigger: "blur" }],
+  userId: [{ required: true, message: "请输入用户ID", trigger: "blur" }],
   password: [
     { required: true, message: "请输入密码", trigger: "blur" },
-    { min: 6, message: "密码长度不能少于6位", trigger: "blur" },
+    { min: 2, message: "密码长度不能少于2位", trigger: "blur" },
   ],
 };
 
@@ -124,10 +117,6 @@ const handleLogin = async () => {
   } finally {
     loading.value = false;
   }
-};
-
-const goToRegister = () => {
-  router.push("/register");
 };
 </script>
 
@@ -181,12 +170,6 @@ const goToRegister = () => {
     width: 100%;
     height: 44px;
     font-size: 16px;
-  }
-
-  .register-link {
-    text-align: center;
-    font-size: 14px;
-    color: #606266;
   }
 }
 </style>

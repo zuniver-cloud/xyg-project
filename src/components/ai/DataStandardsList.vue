@@ -29,27 +29,14 @@
           stripe
           style="width: 100%"
         >
+          <el-table-column prop="id" label="标准ID" width="100" />
           <el-table-column prop="name" label="标准名称" min-width="200" />
-          <el-table-column prop="type" label="标准类型" width="120">
-            <template #default="{ row }">
-              <el-tag :type="row.type === 'basic' ? 'primary' : 'success'">
-                {{ row.type === "basic" ? "基础标准" : "高级标准" }}
-              </el-tag>
-            </template>
-          </el-table-column>
           <el-table-column
-            prop="requirement"
-            label="关联需求"
-            min-width="150"
+            prop="description"
+            label="标准描述"
+            min-width="200"
           />
-          <el-table-column prop="createTime" label="创建时间" width="180" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              <el-tag :type="row.status === 'active' ? 'success' : 'info'">
-                {{ row.status === "active" ? "已启用" : "已停用" }}
-              </el-tag>
-            </template>
-          </el-table-column>
+          <el-table-column prop="updateAt" label="更新时间" width="180" />
           <el-table-column label="操作" width="280" fixed="right">
             <template #default="{ row }">
               <div class="action-buttons">
@@ -103,6 +90,11 @@
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Search, Refresh, View, Edit, Delete } from "@element-plus/icons-vue";
+import {
+  getStandardList,
+  updateStandard,
+  deleteStandard,
+} from "@/api/standard";
 
 const emit = defineEmits(["view", "edit", "delete"]);
 
@@ -122,81 +114,83 @@ const pagination = reactive({
   total: 0,
 });
 
-// 模拟数据
-const mockData = [
-  {
-    id: 1,
-    name: "用户管理数据标准",
-    type: "basic",
-    requirement: "用户管理系统需求",
-    createTime: "2024-01-15 10:30:00",
-    status: "active",
-    content: "用户管理相关数据标准内容...",
-  },
-  {
-    id: 2,
-    name: "订单管理数据标准",
-    type: "advanced",
-    requirement: "订单管理系统需求",
-    createTime: "2024-01-16 14:20:00",
-    status: "active",
-    content: "订单管理相关数据标准内容...",
-  },
-  {
-    id: 3,
-    name: "库存管理数据标准",
-    type: "basic",
-    requirement: "库存管理系统需求",
-    createTime: "2024-01-17 09:15:00",
-    status: "inactive",
-    content: "库存管理相关数据标准内容...",
-  },
-  {
-    id: 4,
-    name: "财务管理数据标准",
-    type: "advanced",
-    requirement: "财务管理系统需求",
-    createTime: "2024-01-18 16:45:00",
-    status: "active",
-    content: "财务管理相关数据标准内容...",
-  },
-  {
-    id: 5,
-    name: "客户管理数据标准",
-    type: "basic",
-    requirement: "客户管理系统需求",
-    createTime: "2024-01-19 11:20:00",
-    status: "active",
-    content: "客户管理相关数据标准内容...",
-  },
-];
+// 模拟数据 - 已注释，使用API获取数据
+// const mockData = [
+//   {
+//     id: 1,
+//     name: "用户管理数据标准",
+//     type: "basic",
+//     requirement: "用户管理系统需求",
+//     createTime: "2024-01-15 10:30:00",
+//     status: "active",
+//     content: "用户管理相关数据标准内容...",
+//   },
+//   {
+//     id: 2,
+//     name: "订单管理数据标准",
+//     type: "advanced",
+//     requirement: "订单管理系统需求",
+//     createTime: "2024-01-16 14:20:00",
+//     status: "active",
+//     content: "订单管理相关数据标准内容...",
+//   },
+//   {
+//     id: 3,
+//     name: "库存管理数据标准",
+//     type: "basic",
+//     requirement: "库存管理系统需求",
+//     createTime: "2024-01-17 09:15:00",
+//     status: "inactive",
+//     content: "库存管理相关数据标准内容...",
+//   },
+//   {
+//     id: 4,
+//     name: "财务管理数据标准",
+//     type: "advanced",
+//     requirement: "财务管理系统需求",
+//     createTime: "2024-01-18 16:45:00",
+//     status: "active",
+//     content: "财务管理相关数据标准内容...",
+//   },
+//   {
+//     id: 5,
+//     name: "客户管理数据标准",
+//     type: "basic",
+//     requirement: "客户管理系统需求",
+//     createTime: "2024-01-19 11:20:00",
+//     status: "active",
+//     content: "客户管理相关数据标准内容...",
+//   },
+// ];
 
 // 获取数据标准列表
 const fetchStandardsList = async () => {
-  loading.value = true;
   try {
-    // 模拟API调用
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    loading.value = true;
+    const response = await getStandardList({
+      erId: null, // 可空
+      startTime: "", // 可空
+      endTime: "", // 可空
+      standardName: searchKeyword.value,
+      pageNum: pagination.page,
+      pageSize: pagination.page_size,
+    });
 
-    // 模拟搜索过滤
-    let filteredData = [...mockData];
-    if (searchKeyword.value) {
-      filteredData = mockData.filter(
-        (item) =>
-          item.name.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-          item.requirement
-            .toLowerCase()
-            .includes(searchKeyword.value.toLowerCase())
-      );
+    if (response.code === 0 || response.code === "0") {
+      // 转换API数据格式为组件需要的格式
+      standardsList.value = response.data.records.map((item) => ({
+        id: item.standardId,
+        name: item.standardName,
+        updateAt: item.updateAt,
+        content: item.standardJson,
+        description: item.description,
+      }));
+      pagination.total = response.data.total;
+    } else {
+      ElMessage.error(response.msg || "获取数据标准列表失败");
     }
-
-    // 模拟分页
-    const start = (pagination.page - 1) * pagination.page_size;
-    const end = start + pagination.page_size;
-    standardsList.value = filteredData.slice(start, end);
-    pagination.total = filteredData.length;
   } catch (error) {
-    console.error("Fetch standards list error:", error);
+    console.error("获取数据标准列表失败:", error);
     ElMessage.error("获取数据标准列表失败");
   } finally {
     loading.value = false;
@@ -239,12 +233,15 @@ const handleDelete = async (row) => {
       }
     );
 
-    // TODO: 前后端联测时，取消注释以下真实API调用代码
-    // await deleteDataStandard(row.id)
-
-    emit("delete", row);
-    // 移除这里的成功提示，由父组件处理
-    fetchStandardsList();
+    // 调用删除API
+    const response = await deleteStandard(row.id);
+    if (response.code === 0 || response.code === "0") {
+      ElMessage.success("删除成功");
+      emit("delete", row);
+      fetchStandardsList();
+    } else {
+      ElMessage.error(response.msg || "删除失败");
+    }
   } catch (error) {
     if (error !== "cancel") {
       console.error("Delete data standard error:", error);

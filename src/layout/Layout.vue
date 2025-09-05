@@ -78,11 +78,7 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人资料</el-dropdown-item>
-                <el-dropdown-item command="password">修改密码</el-dropdown-item>
-                <el-dropdown-item divided command="logout"
-                  >退出登录</el-dropdown-item
-                >
+                <el-dropdown-item command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -169,12 +165,6 @@ const toggleCollapse = () => {
 // 处理用户下拉菜单命令
 const handleCommand = async (command) => {
   switch (command) {
-    case "profile":
-      // 跳转到个人资料页面
-      break;
-    case "password":
-      // 打开修改密码对话框
-      break;
     case "logout":
       try {
         await ElMessageBox.confirm("确定要退出登录吗？", "提示", {
